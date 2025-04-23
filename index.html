@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Hamburg Altona – Marker mit Bild-Upload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .toolbar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .toolbar button {
+      margin: 2px;
+      padding: 6px 12px;
+    }
+    .popup-form label {
+      display: block;
+      margin-top: 6px;
+    }
+    .popup-form input, .popup-form textarea {
+      min-width: 250px;
+      width: 100%;
+    }
+    .popup-form img {
+      max-width: 100%;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="setMarkerColor('blue')">Blauer Marker</button>
+    <button onclick="setMarkerColor('brown')">Brauner Marker</button>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+
+const GITHUB_USERNAME = 'hannes-chl';
+const GITHUB_REPO = '1910';
+const GITHUB_BRANCH = 'main';
+const GITHUB_TOKEN = 'DEIN_GITHUB_TOKEN_HIER'; // ⚠️ Nur zu Testzwecken verwenden!
+
+async function uploadFileToGitHub(path, content, message = 'Datei-Upload') {
+  const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${path}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message,
+      content: btoa(content),
+      branch: GITHUB_BRANCH
+    })
+  });
+  return res.json();
+}
+
+    const map = L.map('map').setView([53.5760, 9.9018], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap-Mitwirkende'
+    }).addTo(map);
+
+    let currentColor = null;
+    let allMarkers = [];
+
+    function setMarkerColor(color) {
+      currentColor = color;
+    }
+
+    function createEditableMarker(latlng, color, text = '', image = '', title = '') {
+      const marker = L.circleMarker(latlng, {
+        radius: getResponsiveRadius(map.getZoom()),
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.8
+      }).addTo(map);
+
+      marker.options.color = color;
+      marker.text = text;
+      marker.title = title;
+      marker.image = image;
+      marker.lastUpdated = new Date().toLocaleString();
+
+      updateTooltip(marker);
+
+      const popupContent = document.createElement('div');
+      popupContent.className = 'popup-form';
+      popupContent.innerHTML = `
+        <label>Titel:</label>
+        <input type="text" id="marker-title" value="${title}" />
+        <label>Farbe ändern:</label>
+        <select id="color-select">
+          <option value="blue" ${color === 'blue' ? 'selected' : ''}>Blau</option>
+          <option value="brown" ${color === 'brown' ? 'selected' : ''}>Braun</option>
+        </select>
+        <label>Text:</label>
+        <textarea id="marker-text" rows="3">${text}</textarea>
+        <label>Bild hochladen:</label>
+        <input type="file" id="marker-file" accept="image/*" />
+        <div class="preview">${image ? `<img src="${image}" />` : ''}</div>
+        <button onclick="deleteImage(this)" style="margin-top:6px;">Bild löschen</button>
+        <button onclick="saveAndClose(this)" style="margin-top:10px;background-color:#4CAF50;color:white;">Speichern</button>
+        <button onclick="deleteMarker(this)" style="margin-top:10px;color:red;">Löschen</button>
+      `;
+
+      const fileInput = popupContent.querySelector('#marker-file');
+      
+fileInput.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64Image = e.target.result.split(',')[1];
+      const filename = `images/${Date.now()}_${file.name}`;
+      const response = await uploadFileToGitHub(filename, base64Image, 'Bild hochgeladen');
+      const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filename}`;
+
+      marker.image = rawUrl;
+      popupContent.querySelector('.preview').innerHTML = `<img src="${rawUrl}" />`;
+      saveMarkers();
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+
+      marker.bindPopup(popupContent);
+      marker.popupContent = popupContent;
+      allMarkers.push(marker);
+
+      return marker;
+    }
+
+    function updateTooltip(marker) {
+  let tooltipText = `<div style='text-align:left;'>`;
+  if (marker.title) {
+    tooltipText += `<strong>${marker.title}</strong><br/>`;
+  }
+  tooltipText += `Zuletzt geändert: ${marker.lastUpdated}</div>`;
+  marker.bindTooltip(tooltipText, { permanent: false, direction: 'top' });
+}
+
+    function saveAndClose(button) {
+      const popupContent = button.parentElement;
+      const marker = allMarkers.find(m => m.popupContent === popupContent);
+      if (!marker) return;
+
+      const newColor = popupContent.querySelector('#color-select').value;
+      const text = popupContent.querySelector('#marker-text').value;
+      const title = popupContent.querySelector('#marker-title').value;
+
+      if (newColor !== marker.options.color) {
+        marker.image = '';
+        popupContent.querySelector('.preview').innerHTML = '';
+        popupContent.querySelector('#marker-file').value = '';
+      }
+
+      marker.setStyle({ color: newColor, fillColor: newColor });
+      marker.options.color = newColor;
+      marker.text = text;
+      marker.title = title;
+      marker.lastUpdated = new Date().toLocaleString();
+
+      updateTooltip(marker);
+      saveMarkers();
+      marker.closePopup();
+    }
+
+    function deleteImage(button) {
+      const popupContent = button.closest('.popup-form');
+      const marker = allMarkers.find(m => m.popupContent === popupContent);
+      if (!marker) return;
+
+      marker.image = '';
+      popupContent.querySelector('.preview').innerHTML = '';
+      popupContent.querySelector('#marker-file').value = '';
+      saveMarkers();
+    }
+
+    function deleteMarker(button) {
+      const popupContent = button.parentElement;
+      const markerIndex = allMarkers.findIndex(m => m.popupContent === popupContent);
+      if (markerIndex !== -1) {
+        map.removeLayer(allMarkers[markerIndex]);
+        allMarkers.splice(markerIndex, 1);
+        saveMarkers();
+      }
+    }
+
+    function getResponsiveRadius(zoom) {
+      return Math.max(1.5, zoom * 0.4);
+    }
+
+    async function saveMarkers() {
+  const data = allMarkers.map(marker => ({
+    lat: marker.getLatLng().lat,
+    lng: marker.getLatLng().lng,
+    color: marker.options.color,
+    text: marker.text || '',
+    image: marker.image || '',
+    title: marker.title || ''
+  }));
+
+  const json = JSON.stringify(data, null, 2);
+  await uploadFileToGitHub('data/markers.json', json, 'Marker aktualisiert');
+}
+      const data = allMarkers.map(marker => ({
+        lat: marker.getLatLng().lat,
+        lng: marker.getLatLng().lng,
+        color: marker.options.color,
+        text: marker.text || '',
+        image: marker.image || '',
+        title: marker.title || ''
+      }));
+      localStorage.setItem('hamburgMarkers', JSON.stringify(data));
+    }
+
+    async function loadMarkers() {
+  const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/markers.json`);
+  if (!res.ok) return;
+
+  const data = await res.json();
+  data.forEach(({ lat, lng, color, text, image, title }) => {
+    createEditableMarker([lat, lng], color, text, image, title);
+  });
+}
+      const data = JSON.parse(localStorage.getItem('hamburgMarkers') || '[]');
+      data.forEach(({ lat, lng, color, text, image, title }) => {
+        createEditableMarker([lat, lng], color, text, image, title);
+      });
+    }
+
+    map.on('zoomend', function() {
+      allMarkers.forEach(marker => {
+        marker.setRadius(getResponsiveRadius(map.getZoom()));
+      });
+    });
+
+    map.on('click', function(e) {
+      if (!currentColor) return;
+      const newMarker = createEditableMarker(e.latlng, currentColor);
+      saveMarkers();
+      currentColor = null;
+    });
+
+    loadMarkers();
+  </script>
+</body>
+</html>
