@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Hamburg Altona – Marker mit Bild-Upload</title>
+  <title>Hamburg – Marker mit Bild-Upload</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
@@ -55,7 +55,7 @@
 const GITHUB_USERNAME = 'hannes-chl';
 const GITHUB_REPO = '1910';
 const GITHUB_BRANCH = 'main';
-const GITHUB_TOKEN = 'DEIN_GITHUB_TOKEN_HIER'; // ⚠️ Nur zu Testzwecken verwenden!
+const GITHUB_TOKEN = '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';
 
 async function uploadFileToGitHub(path, content, message = 'Datei-Upload') {
   const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${path}`;
