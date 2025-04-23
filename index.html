@@ -223,7 +223,7 @@ fileInput.addEventListener('change', async (event) => {
   const json = JSON.stringify(data, null, 2);
   await uploadFileToGitHub('data/markers.json', json, 'Marker aktualisiert');
 }
-      const data = allMarkers.map(marker => ({
+      const markerData = allMarkers.map(marker => ({
         lat: marker.getLatLng().lat,
         lng: marker.getLatLng().lng,
         color: marker.options.color,
@@ -242,7 +242,7 @@ fileInput.addEventListener('change', async (event) => {
     createEditableMarker([lat, lng], color, text, image, title);
   });
 }
-      const data = JSON.parse(localStorage.getItem('hamburgMarkers') || '[]');
+      const savedData = JSON.parse(localStorage.getItem('hamburgMarkers') || '[]');
       data.forEach(({ lat, lng, color, text, image, title }) => {
         createEditableMarker([lat, lng], color, text, image, title);
       });
