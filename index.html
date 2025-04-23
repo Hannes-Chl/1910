@@ -232,7 +232,6 @@ fileInput.addEventListener('change', async (event) => {
         title: marker.title || ''
       }));
       localStorage.setItem('hamburgMarkers', JSON.stringify(data));
-    }
 
     async function loadMarkers() {
   const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/markers.json`);
