@@ -139,7 +139,7 @@ async function uploadFileToGitHub(path, content, message = 'Datei-Upload') {
     };
     reader.readAsDataURL(file);
   }
-});();
+});
           reader.onload = function(e) {
             marker.image = e.target.result;
             popupContent.querySelector('.preview').innerHTML = `<img src="${marker.image}" />`;
