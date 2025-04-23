@@ -55,7 +55,7 @@
 const GITHUB_USERNAME = 'hannes-chl';
 const GITHUB_REPO = '1910';
 const GITHUB_BRANCH = 'main';
-const GITHUB_TOKEN = 'DEIN_GITHUB_TOKEN_HIER'; // ⚠️ Nur zu Testzwecken verwenden!
+const GITHUB_TOKEN = '${{ secrets.MALEN_TOKEN }}';
 
 async function uploadFileToGitHub(path, content, message = 'Datei-Upload') {
   const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${path}`;
